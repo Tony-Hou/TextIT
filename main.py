@@ -1,9 +1,8 @@
 #! /usr/bin/python
+from __future__ import division
 import httplib
 import io
 import json
-import sys
-import time
 import urllib
 
 import numpy as np
@@ -58,18 +57,18 @@ answerURL = parsedLocation[1]
 # async operation that can take a variable amount of time depending on the length
 # of the text you want to recognize. You may need to wait or retry this GET operation.
 
-ns = 2
-print('\nHandwritten text submitted. Waiting %.2f seconds to retrieve the recognized text.\n' % ns)
-time.sleep(ns)
+print('\nHandwritten text submitted.')
 
 # Execute the second REST API call and get the response.
 conn = httplib.HTTPSConnection(uri_base)
-conn.request("GET", answerURL, '', headers)
-response = conn.getresponse()
-data = response.read()
+while True:
+    conn.request("GET", answerURL, '', headers)
+    response = conn.getresponse()
+    data = response.read()
+    parsed = json.loads(data)
+    if parsed['status'] != 'Running':
+        break
 
-# 'data' contains the JSON data. The following formats the JSON data for display.
-parsed = json.loads(data)
 print ("Response:")
 print (json.dumps(parsed, sort_keys=False, indent=2))
 conn.close()
@@ -80,37 +79,45 @@ draw = ImageDraw.Draw(im)
 
 xmax = 0
 ymax = 0
-wcell = sys.maxint
-hcell = sys.maxint
+widhts = []
+heights = []
 for line in parsed['recognitionResult']['lines']:
     text = line['text']
     bb = line['boundingBox']
+    draw.rectangle([bb[0], bb[1], bb[4], bb[5]], outline=(0, 255, 0))
+
     if bb[4] > xmax:
         xmax = bb[4]
     if bb[5] > ymax:
         ymax = bb[5]
-    if (bb[2] - bb[0]) / len(text) < wcell:
-        wcell = (bb[2] - bb[0]) / len(text)
-    if bb[7] - bb[1] < hcell:
-        hcell = bb[7] - bb[1]
 
-    draw.rectangle([bb[0], bb[1], bb[4], bb[5]], outline=(0, 255, 0))
+    wbb = bb[2] - bb[0]
+    hbb = bb[7] - bb[1]
 
+    widhts.append(wbb / len(text))
+    heights.append(hbb)
+
+del draw
+
+wcell = np.mean(widhts)
+hcell = np.mean(heights)
+#hcell = np.min(heights)
+
+print 'w:', widhts
+print 'h:', heights
 print xmax, ymax, wcell, hcell
 
-wcell = 10
-hcell = 30
-
-n = np.ceil(ymax / float(hcell))
-m = np.ceil(xmax / float(wcell))
+n = np.ceil(ymax / hcell)
+#m = np.ceil(xmax / wcell)
+m = 120
 
 print n, m
 
 grid = np.full([n, m], ord(' '), dtype=np.uint8)
 for line in parsed['recognitionResult']['lines']:
     bb = line['boundingBox']
-    i = int(np.floor(bb[1] / hcell))
-    j = int(np.floor(bb[0] / wcell))
+    i = np.rint(bb[1] / hcell)
+    j = np.rint(bb[0] / wcell)
 
     text = line['text']
     print text
@@ -126,5 +133,4 @@ f = open('test.txt', 'w')
 f.write(buff)
 f.close()
 
-del draw
 im.show()

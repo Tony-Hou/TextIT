@@ -2,7 +2,7 @@
 
 import requests
 import subprocess
-from flask import Flask, jsonify, request
+from flask import Flask, request
 from recognize import get_img_from_url, recognize, parse_response
 
 app = Flask(__name__)
@@ -23,14 +23,15 @@ def textit():
 
         buff = parse_response(response)
 
-        f = open('test.txt', 'w')
+        f = open('output.txt', 'w')
         f.write(buff)
         f.close()
 
         out = subprocess.check_output('curl -X POST https://api.twistapp.com/api/v2/comments/add \
                                        -d thread_id=' + str(thread_id) + ' \
-                                       -d attachments="[$(curl -X POST https://api.twistapp.com/api/v2/attachments/upload -F attachment_id=ac2fd489-9eab-4956-9d9d-c9b590258328 -F file_name=@test.txt -H "Authorization: ' + TOKEN + '")]" \
-                                       -d content="Testing on hackupc" \
+                                       -d attachments="[$(curl -X POST https://api.twistapp.com/api/v2/attachments/upload -F attachment_id=ac2fd489-9eab-4956-9d9d-c9b590258328 -F file_name=@output.txt -H "Authorization: ' + TOKEN + '")]" \
+                                       -d content="Your text file:" \
+                                       -d send_as_integration=1 \
                                        -H "Authorization: ' + TOKEN + '"', shell=True)
         print out
 

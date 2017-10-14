@@ -6,7 +6,6 @@ import json
 import urllib
 
 import numpy as np
-from PIL import Image, ImageDraw
 
 subscription_key = 'be9dac277ac44c0589f0974c547680d2'
 uri_base = 'westcentralus.api.cognitive.microsoft.com'

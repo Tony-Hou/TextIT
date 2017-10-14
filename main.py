@@ -12,18 +12,17 @@ subscription_key = 'be9dac277ac44c0589f0974c547680d2'
 uri_base = 'westcentralus.api.cognitive.microsoft.com'
 
 
-def get_img_from_url():
+def get_img_from_url(url):
     # The URL of a JPEG image containing handwritten text.
-    url = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Cursive_Writing_on_Notebook_paper.jpg/800px-Cursive_Writing_on_Notebook_paper.jpg"
     body = "{'url':'%s'}" % url
     fd = urllib.urlopen(url)
     im_bytes = io.BytesIO(fd.read())
     return body, im_bytes
 
 
-def get_img_from_file():
+def get_img_from_file(fn):
     # The file name of a JPEG image containing handwritten text.
-    im_bytes = open('IMG_06241.jpg', 'rb')
+    im_bytes = open(fn, 'rb')
     body = im_bytes
     return body, im_bytes
 
@@ -57,9 +56,9 @@ def recognize(content_type, body):
         exit()
 
     # The 'Operation-Location' in the response contains the URI to retrieve the recognized text.
-    operationLocation = response.getheader('Operation-Location')
-    parsedLocation = operationLocation.split(uri_base)
-    answerURL = parsedLocation[1]
+    operation_location = response.getheader('Operation-Location')
+    parsed_location = operation_location.split(uri_base)
+    answer_url = parsed_location[1]
 
     # NOTE: The response may not be immediately available. Handwriting recognition is an
     # async operation that can take a variable amount of time depending on the length
@@ -70,7 +69,7 @@ def recognize(content_type, body):
     # Execute the second REST API call and get the response.
     conn = httplib.HTTPSConnection(uri_base)
     while True:
-        conn.request("GET", answerURL, '', headers)
+        conn.request("GET", answer_url, '', headers)
         response = conn.getresponse()
         data = response.read()
         parsed = json.loads(data)
@@ -84,8 +83,7 @@ def recognize(content_type, body):
     return parsed
 
 
-def parse_response(parsed, im_bytes):
-    im = Image.open(im_bytes)
+def parse_response(parsed, im):
     draw = ImageDraw.Draw(im)
 
     xmax = 0
@@ -137,17 +135,21 @@ def parse_response(parsed, im_bytes):
             grid[i, j + e] = ord(c)
 
     buff = ''
-    for line in grid:
+    for line in grid[:-1]:
         buff += ''.join(map(lambda x: chr(x), line)) + '\n'
+    buff += ''.join(map(lambda x: chr(x), grid[-1]))
 
-    return buff, im
+    return buff
 
 
 def main():
-    body, im_bytes = get_img_from_url(); parsed = recognize('application/json', body)
-    # body, im_bytes = get_img_from_file(); parsed = recognize('application/octet-stream', body)
+    #url = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Cursive_Writing_on_Notebook_paper.jpg/800px-Cursive_Writing_on_Notebook_paper.jpg"
+    url = 'https://github.com/oscmansan/TextIT/raw/master/IMG_06241.jpg'
+    body, im_bytes = get_img_from_url(url)
+    parsed = recognize('application/json', body)
 
-    buff, im = parse_response(parsed, im_bytes)
+    im = Image.open(im_bytes)
+    buff = parse_response(parsed, im)
 
     f = open('test.txt', 'w')
     f.write(buff)

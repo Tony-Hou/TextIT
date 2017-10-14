@@ -73,7 +73,7 @@ def recognize(content_type, body):
         response = conn.getresponse()
         data = response.read()
         parsed = json.loads(data)
-        if parsed['status'] != 'Running':
+        if parsed['status'] in ['Failed', 'Succeeded']:
             break
 
     print ("Response:")
@@ -83,11 +83,12 @@ def recognize(content_type, body):
     return parsed
 
 
-def parse_response(parsed, im):
+def parse_response(parsed, im, tight=True):
     draw = ImageDraw.Draw(im)
 
     xmax = 0
     ymax = 0
+    lmax = 0
     widhts = []
     heights = []
     for line in parsed['recognitionResult']['lines']:
@@ -99,6 +100,8 @@ def parse_response(parsed, im):
             xmax = bb[4]
         if bb[5] > ymax:
             ymax = bb[5]
+        if len(text) > lmax:
+            lmax = len(text)
 
         wbb = bb[2] - bb[0]
         hbb = bb[7] - bb[1]
@@ -106,19 +109,17 @@ def parse_response(parsed, im):
         widhts.append(wbb / len(text))
         heights.append(hbb)
 
-    del draw
-
     wcell = np.mean(widhts)
-    # hcell = np.mean(heights)
-    hcell = np.min(heights)
+    if tight:
+        hcell = (np.min(heights) + np.mean(heights)) / 2
+    else:
+        hcell = np.min(heights)
 
-    print 'w:', widhts
-    print 'h:', heights
-    print xmax, ymax, wcell, hcell
+    print xmax, ymax, lmax, wcell, hcell
 
     n = np.ceil(ymax / hcell)
-    # m = np.ceil(xmax / wcell)
-    m = 120
+    m = np.ceil(xmax / wcell) + lmax
+    #m = 120
 
     print n, m
 
@@ -129,27 +130,25 @@ def parse_response(parsed, im):
         j = np.rint(bb[0] / wcell)
 
         text = line['text']
-        print text
-        print '(%d,%d) (%d,%d)' % (bb[0], bb[1], j, i)
         for e, c in enumerate(text):
             grid[i, j + e] = ord(c)
 
     buff = ''
     for line in grid[:-1]:
-        buff += ''.join(map(lambda x: chr(x), line)) + '\n'
-    buff += ''.join(map(lambda x: chr(x), grid[-1]))
+        buff += ''.join(map(lambda x: chr(x), line)).rstrip() + '\n'
+    buff += ''.join(map(lambda x: chr(x), grid[-1])).rstrip()
 
     return buff
 
 
 def main():
-    #url = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Cursive_Writing_on_Notebook_paper.jpg/800px-Cursive_Writing_on_Notebook_paper.jpg"
-    url = 'https://github.com/oscmansan/TextIT/raw/master/IMG_06241.jpg'
+    #url = "https://goo.gl/LZJRbX"
+    url = 'https://goo.gl/4BhsBw'
     body, im_bytes = get_img_from_url(url)
-    parsed = recognize('application/json', body)
+    response = recognize('application/json', body)
 
     im = Image.open(im_bytes)
-    buff = parse_response(parsed, im)
+    buff = parse_response(response, im)
 
     f = open('test.txt', 'w')
     f.write(buff)

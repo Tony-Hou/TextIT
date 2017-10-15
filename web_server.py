@@ -1,13 +1,13 @@
 #! /usr/bin/python
 
-import requests
 import subprocess
+
 from flask import Flask, request
-from recognize import get_img_from_url, recognize, parse_response
+
+from recognize import recognize, parse_response
 
 app = Flask(__name__)
 app.debug = True
-
 
 TOKEN = 'Bearer oauth2:a5c57ac69c0ff3d278ff36621e6693591dede092'
 
@@ -18,7 +18,7 @@ def textit():
     thread_id = request.json['thread_id']
     if content.startswith('/textit '):
         url = content[8:]
-        body, im_bytes = get_img_from_url(url)
+        body = "{'url':'%s'}" % url
         response = recognize('application/json', body)
 
         buff = parse_response(response)

@@ -1,7 +1,7 @@
 #! /usr/bin/python
 from __future__ import division
+
 import httplib
-import io
 import json
 import urllib
 
@@ -9,21 +9,6 @@ import numpy as np
 
 subscription_key = 'be9dac277ac44c0589f0974c547680d2'
 uri_base = 'westcentralus.api.cognitive.microsoft.com'
-
-
-def get_img_from_url(url):
-    # The URL of a JPEG image containing handwritten text.
-    body = "{'url':'%s'}" % url
-    fd = urllib.urlopen(url)
-    im_bytes = io.BytesIO(fd.read())
-    return body, im_bytes
-
-
-def get_img_from_file(fn):
-    # The file name of a JPEG image containing handwritten text.
-    im_bytes = open(fn, 'rb')
-    body = im_bytes
-    return body, im_bytes
 
 
 def recognize(content_type, body):
@@ -115,7 +100,7 @@ def parse_response(parsed, tight=True):
 
     n = np.ceil(ymax / hcell)
     m = np.ceil(xmax / wcell) + lmax
-    #m = 120
+    # m = 120
 
     print n, m
 
